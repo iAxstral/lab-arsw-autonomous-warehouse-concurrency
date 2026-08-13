@@ -13,10 +13,8 @@ public class DeliveryRegistry {
     private int nextPosition = 1;
     private final List<DeliveryRecord> deliveries = new ArrayList<>();
 
-    public void register(int robotId, int parcelId, long elapsedMillis) {
+    public synchronized void register(int robotId, int parcelId, long elapsedMillis) { // agregamos Synchronized a los métodos que tocan el mismo estado 
         int assignedPosition = nextPosition;
-        Thread.yield();
-        nextPosition = nextPosition + 1;
         deliveries.add(new DeliveryRecord(assignedPosition, robotId, parcelId, elapsedMillis));
     }
 
