@@ -13,11 +13,11 @@ public class WarehouseStatistics {
         totalProcessingMillis += elapsedMillis; // me ayudó a auto completar copilot
     }
 
-    public int processedParcels() {
+    public synchronized int processedParcels() {
         return processedParcels;
     }
 
-    public long totalProcessingMillis() {
+    public synchronized long totalProcessingMillis() {
         return totalProcessingMillis;
     }
 }
