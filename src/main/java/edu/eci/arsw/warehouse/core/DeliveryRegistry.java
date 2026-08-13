@@ -19,7 +19,7 @@ public class DeliveryRegistry {
         deliveries.add(new DeliveryRecord(assignedPosition, robotId, parcelId, elapsedMillis));
     }
 
-    public List<DeliveryRecord> snapshot() {
+    public synchronized List<DeliveryRecord> snapshot() {
         // Intentionally not coordinated with concurrent writes.
         return List.copyOf(deliveries);
     }
