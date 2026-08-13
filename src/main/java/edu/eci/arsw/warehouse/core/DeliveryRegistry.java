@@ -15,6 +15,7 @@ public class DeliveryRegistry {
 
     public synchronized void register(int robotId, int parcelId, long elapsedMillis) { // agregamos Synchronized a los métodos que tocan el mismo estado 
         int assignedPosition = nextPosition;
+        nextPosition = nextPosition + 1;
         deliveries.add(new DeliveryRecord(assignedPosition, robotId, parcelId, elapsedMillis));
     }
 
