@@ -8,21 +8,16 @@ public class WarehouseStatistics {
     private int processedParcels;
     private long totalProcessingMillis;
 
-    public void recordProcessed(long elapsedMillis) {
-        int current = processedParcels;
-        Thread.yield();
-        processedParcels = current + 1;
-
-        long accumulated = totalProcessingMillis;
-        Thread.yield();
-        totalProcessingMillis = accumulated + elapsedMillis;
+    public synchronized void recordProcessed(long elapsedMillis) {
+        processedParcels++; // se necesita synchronized también en los getters
+        totalProcessingMillis += elapsedMillis; // me ayudó a auto completar copilot
     }
 
-    public int processedParcels() {
+    public synchronized int processedParcels() {
         return processedParcels;
     }
 
-    public long totalProcessingMillis() {
+    public synchronized long totalProcessingMillis() {
         return totalProcessingMillis;
     }
 }
