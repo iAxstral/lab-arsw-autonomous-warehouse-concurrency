@@ -85,17 +85,30 @@ not atomic *across* the four objects. But since no robot is writing to any of th
 during the pause, there is no concurrent writer to race against, so no torn/mid-mutation
 read across objects can occur either. Consistency here comes from the *absence of active
 writers* during the pause window, not from a single atomic multi-object read.
+**Verification output** (`PauseResumeDemo`, 12 robots / 180 parcels):
 
+```text
 --- PAUSED SNAPSHOT ---
+Initial parcels : 180
 Pending parcels : 63
 Processed count : 117
 Registry size   : 117
+Current leader  : Robot-08 / parcel 8 / position 1
 Simulation paused = true
 
 --- FINAL SNAPSHOT ---
+Initial parcels : 180
 Pending parcels : 0
 Processed count : 180
 Registry size   : 180
+Current leader  : Robot-08 / parcel 8 / position 1
+```
+
+`Processed count == Registry size` (117 = 117) in the paused snapshot confirms no robot
+was mid-write when the snapshot was taken — exactly the consistency argument above. The
+final snapshot reaching `Pending parcels : 0` with no hang confirms `resume()` correctly
+wakes every blocked robot via `notifyAll()` and the simulation completes normally.
+
 ## 7. Verification results
 
 ### `PackageQueue` fix — before/after
