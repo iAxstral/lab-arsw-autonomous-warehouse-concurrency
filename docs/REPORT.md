@@ -85,6 +85,17 @@ not atomic *across* the four objects. But since no robot is writing to any of th
 during the pause, there is no concurrent writer to race against, so no torn/mid-mutation
 read across objects can occur either. Consistency here comes from the *absence of active
 writers* during the pause window, not from a single atomic multi-object read.
+
+--- PAUSED SNAPSHOT ---
+Pending parcels : 63
+Processed count : 117
+Registry size   : 117
+Simulation paused = true
+
+--- FINAL SNAPSHOT ---
+Pending parcels : 0
+Processed count : 180
+Registry size   : 180
 ## 7. Verification results
 
 ### `PackageQueue` fix — before/after
