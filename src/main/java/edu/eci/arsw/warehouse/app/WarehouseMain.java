@@ -10,7 +10,7 @@ public final class WarehouseMain {
     private WarehouseMain() {
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         int robots = args.length > 0 ? Integer.parseInt(args[0]) : 12;
         int parcels = args.length > 1 ? Integer.parseInt(args[1]) : 100;
 
@@ -19,16 +19,20 @@ public final class WarehouseMain {
         System.out.printf("Starting warehouse with %d robots and %d parcels...%n", robots, parcels);
         simulation.start();
 
-        // Intentionally wrong architecture-level coordination:
-        // the application reports a "final" state before workers have finished.
-        Thread.sleep(60);
-        System.out.println("\n--- STARTER REPORT (intentionally premature) ---");
-        printSnapshot(simulation.snapshot());
-        System.out.println("----------------------------------------------\n");
+        // LAB 2 - Part IV: wait for all robots via join() (inside awaitCompletion()),
+        // not Thread.sleep(). See docs/REPORT.md Part IV for the full justification.
+        try {
+            simulation.awaitCompletion();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            System.err.println("Main thread interrupted while waiting for robots to finish. "
+                    + "No final report was printed because completion could not be confirmed.");
+            return;
+        }
 
-        // The JVM stays alive because robot threads are non-daemon threads.
-        // TODO LAB 2: coordinate completion explicitly with join() and print exactly one
-        // consistent final report after all workers terminate.
+        System.out.println("\n--- FINAL REPORT ---");
+        printSnapshot(simulation.snapshot());
+        System.out.println("--------------------\n");
     }
 
     static void printSnapshot(WarehouseSnapshot snapshot) {
