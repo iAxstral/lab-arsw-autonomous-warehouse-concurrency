@@ -28,7 +28,6 @@ public class SimulationControl {
 
     public void awaitIfPaused() {
         synchronized (lock) {
-            // TODO LAB 2: replace busy waiting with monitor coordination.
             while (paused) {
                 try {
                     lock.wait();

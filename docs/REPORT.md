@@ -16,8 +16,75 @@
 
 ## 6. Thread completion and pause/resume coordination
 
-> _TODO (owner: Part IV/V teammate): document the `join()`-based completion fix in `WarehouseMain`/`WarehouseSimulation.awaitCompletion()`, the `wait()`/`notifyAll()` monitor replacing the busy-wait in `SimulationControl`, and the argument for why the paused snapshot is consistent (robots are blocked inside the `synchronized awaitIfPaused()` region, not mutating shared state, while paused)._
+### Thread completion (`WarehouseMain` / `WarehouseSimulation.awaitCompletion()`)
 
+The starter printed a report after a fixed `Thread.sleep(60)`, with no relationship to
+the actual state of the robot threads — with 12 robots / 100 parcels this consistently
+printed `Pending parcels` different from 0 and an incomplete `DeliveryRegistry`, since
+robots were still running.
+
+`Thread.sleep(N)` cannot substitute for `join()` because it only delays execution; it
+gives no guarantee about *what state the other threads are in* when it returns, and no
+memory-visibility guarantee for what those threads wrote. `Thread.join()`, by contrast,
+blocks the calling thread until the target thread reaches `TERMINATED`, and per JLS
+17.4.5 establishes a happens-before edge: everything a robot wrote before finishing is
+guaranteed visible to the thread that joined it. `WarehouseSimulation#awaitCompletion()`
+performs one `join()` per robot thread; `WarehouseMain` calls it and only then prints
+the final report, guaranteeing exactly one report, printed after every robot has
+actually terminated, consistent with the invariants checked in Part II.
+
+No `synchronized` is used in `WarehouseMain`: the method declares no shared mutable
+state of its own (`robots`, `parcels`, `simulation` are local variables, never touched
+by more than one thread), so there is no critical region to protect there — adding a
+lock would be decorative, not functional.
+
+### Pause/resume (`SimulationControl`)
+
+The starter used active waiting:
+
+```java
+while (paused) {
+    Thread.onSpinWait();
+}
+```
+
+which keeps every paused robot thread runnable and spinning, burning CPU with no
+useful work, and gives no blocking/wake mechanism — only a `volatile` visibility
+guarantee.
+
+This was replaced with a classic Java monitor: a **private** lock object
+(`private final Object lock = new Object()`), not `synchronized` on `this`. The class
+is `public` and not `final`, so `this` is a monitor reachable from outside the class;
+synchronizing on a private `lock` instead means no external code (or future subclass)
+can ever share this monitor and cause unrelated blocking.
+
+- `pause()` sets `paused = true` inside `synchronized(lock)`.
+- `resume()` sets `paused = false` and calls `lock.notifyAll()` inside the same
+  `synchronized(lock)` block. `notifyAll()` (not `notify()`) is required because
+  multiple robot threads can be blocked simultaneously; `notify()` only guarantees
+  waking one arbitrary thread, stranding the rest indefinitely.
+- `awaitIfPaused()` calls `lock.wait()` inside a `while (paused)` loop (not `if`), to
+  guard against spurious wakeups and against a second `pause()` occurring between a
+  `notifyAll()` and the moment the thread actually resumes. `wait()` releases the lock
+  while blocked, which is exactly what allows `pause()`/`resume()` to acquire it
+  concurrently — replacing it with a spin loop that keeps the lock held (as the TODO
+  scaffold initially did) would deadlock the whole system, since `resume()` could never
+  acquire `lock` to clear the flag.
+
+Each robot calls `control.awaitIfPaused()` at the top of its work loop
+(`WarehouseRobot.run()`), before requesting a new parcel — never mid-processing — so a
+pause always lands at a safe point and never interrupts an in-flight critical region in
+`PackageQueue`, `DeliveryRegistry`, or `WarehouseStatistics`.
+
+**Why the paused snapshot is consistent.** While `paused == true`, every robot is
+blocked inside `awaitIfPaused()`'s `synchronized(lock)` block, not executing any
+application logic. `WarehouseSimulation#snapshot()` still reads `PackageQueue`,
+`DeliveryRegistry`, and `WarehouseStatistics` through their own independent monitors
+(intentionally — see Part 5, no single global lock ties them together), so the read is
+not atomic *across* the four objects. But since no robot is writing to any of them
+during the pause, there is no concurrent writer to race against, so no torn/mid-mutation
+read across objects can occur either. Consistency here comes from the *absence of active
+writers* during the pause window, not from a single atomic multi-object read.
 ## 7. Verification results
 
 ### `PackageQueue` fix — before/after
